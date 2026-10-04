@@ -12,7 +12,6 @@ class CarSalesSystem:
     # ---------- CAR ----------
 
     def add_car(self):
-
         brand = input("Brand: ")
         model = input("Model: ")
         price = float(input("Price: "))
@@ -22,7 +21,7 @@ class CarSalesSystem:
 
         sql = """
         INSERT INTO cars(brand, model, price, quantity)
-        VALUES(%s,%s,%s,%s)
+        VALUES(%s, %s, %s, %s)
         """
 
         self.cursor.execute(
@@ -31,11 +30,9 @@ class CarSalesSystem:
         )
 
         self.con.commit()
-
         print("Car added successfully.")
 
     def view_cars(self):
-
         self.cursor.execute("SELECT * FROM cars")
 
         rows = self.cursor.fetchall()
@@ -46,7 +43,6 @@ class CarSalesSystem:
             print(row)
 
     def search_car(self):
-
         name = input("Enter brand/model: ")
 
         self.cursor.execute(
@@ -63,40 +59,35 @@ class CarSalesSystem:
             print(row)
 
     def update_car(self):
-
         car_id = int(input("Car ID: "))
         price = float(input("New Price: "))
 
         self.cursor.execute(
             """
             UPDATE cars
-            SET price=%s
-            WHERE car_id=%s
+            SET price = %s
+            WHERE car_id = %s
             """,
             (price, car_id)
         )
 
         self.con.commit()
-
         print("Car updated.")
 
     def delete_car(self):
-
         car_id = int(input("Car ID: "))
 
         self.cursor.execute(
-            "DELETE FROM cars WHERE car_id=%s",
+            "DELETE FROM cars WHERE car_id = %s",
             (car_id,)
         )
 
         self.con.commit()
-
         print("Car deleted.")
 
     # ---------- CUSTOMER ----------
 
     def add_customer(self):
-
         name = input("Name: ")
         phone = input("Phone: ")
         email = input("Email: ")
@@ -105,8 +96,8 @@ class CarSalesSystem:
 
         self.cursor.execute(
             """
-            INSERT INTO customers(name,phone,email)
-            VALUES(%s,%s,%s)
+            INSERT INTO customers(name, phone, email)
+            VALUES(%s, %s, %s)
             """,
             (
                 customer.name,
@@ -116,20 +107,15 @@ class CarSalesSystem:
         )
 
         self.con.commit()
-
         print("Customer added.")
 
     def view_customers(self):
-
-        self.cursor.execute(
-            "SELECT * FROM customers"
-        )
+        self.cursor.execute("SELECT * FROM customers")
 
         for row in self.cursor.fetchall():
             print(row)
 
     def search_customer(self):
-
         name = input("Customer name: ")
 
         self.cursor.execute(
@@ -144,7 +130,6 @@ class CarSalesSystem:
             print(row)
 
     def update_customer(self):
-
         customer_id = int(input("Customer ID: "))
         phone = input("New Phone: ")
         email = input("New Email: ")
@@ -152,41 +137,50 @@ class CarSalesSystem:
         self.cursor.execute(
             """
             UPDATE customers
-            SET phone=%s,email=%s
-            WHERE customer_id=%s
+            SET phone = %s, email = %s
+            WHERE customer_id = %s
             """,
             (phone, email, customer_id)
         )
 
         self.con.commit()
-
         print("Customer updated.")
 
     def delete_customer(self):
-
         customer_id = int(input("Customer ID: "))
 
         self.cursor.execute(
             """
             DELETE FROM customers
-            WHERE customer_id=%s
+            WHERE customer_id = %s
             """,
             (customer_id,)
         )
 
         self.con.commit()
-
         print("Customer deleted.")
 
     # ---------- SALE ----------
 
     def sell_car(self):
-
         customer_id = int(input("Customer ID: "))
         car_id = int(input("Car ID: "))
 
+        # Check customer
         self.cursor.execute(
-            "SELECT * FROM cars WHERE car_id=%s",
+            "SELECT * FROM customers WHERE customer_id = %s",
+            (customer_id,)
+        )
+
+        customer = self.cursor.fetchone()
+
+        if customer is None:
+            print("Customer not found.")
+            return
+
+        # Check car
+        self.cursor.execute(
+            "SELECT * FROM cars WHERE car_id = %s",
             (car_id,)
         )
 
@@ -196,6 +190,7 @@ class CarSalesSystem:
             print("Car not found.")
             return
 
+        # Check quantity
         if car[4] <= 0:
             print("Car is unavailable.")
             return
@@ -206,11 +201,12 @@ class CarSalesSystem:
             car[3]
         )
 
+        # Insert sale
         self.cursor.execute(
             """
             INSERT INTO sales
-            (car_id,customer_id,sale_price)
-            VALUES(%s,%s,%s)
+            (car_id, customer_id, sale_price)
+            VALUES(%s, %s, %s)
             """,
             (
                 sale.car_id,
@@ -219,11 +215,12 @@ class CarSalesSystem:
             )
         )
 
+        # Reduce quantity
         self.cursor.execute(
             """
             UPDATE cars
-            SET quantity=quantity-1
-            WHERE car_id=%s
+            SET quantity = quantity - 1
+            WHERE car_id = %s
             """,
             (car_id,)
         )
@@ -240,23 +237,37 @@ class CarSalesSystem:
         SELECT
             s.sale_id,
             c.name,
-            ca.brand,
-            ca.model,
+            CONCAT(ca.brand, ' ', ca.model),
             s.sale_price,
-            DATE_FORMAT(s.sale_date, '%%d-%%m-%%Y %%h:%%i:%%s %%p')
-
+            DATE_FORMAT(s.sale_date, '%d-%m-%Y %h:%i:%s %p')
         FROM sales s
-
         JOIN customers c
-        ON s.customer_id=c.customer_id
-
+            ON s.customer_id = c.customer_id
         JOIN cars ca
-        ON s.car_id=ca.car_id
+            ON s.car_id = ca.car_id
         """
 
         self.cursor.execute(sql)
 
-        print("\nSaleID Customer Car Price Date")
+        rows = self.cursor.fetchall()
 
-        for row in self.cursor.fetchall():
-            print(row)
+        print("\n" + "=" * 85)
+        print(
+            f"{'SaleID':<8}"
+            f"{'Customer':<15}"
+            f"{'Car':<25}"
+            f"{'Price':<15}"
+            f"{'Date & Time'}"
+        )
+        print("=" * 85)
+
+        for row in rows:
+            print(
+                f"{row[0]:<8}"
+                f"{row[1]:<15}"
+                f"{row[2]:<25}"
+                f"{row[3]:<15.2f}"
+                f"{row[4]}"
+            )
+
+        print("=" * 85)
